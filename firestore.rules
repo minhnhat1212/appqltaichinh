@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ==================== USERS COLLECTION ====================
+    // Users can read and write their own user document
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      
+      // ==================== WALLETS SUBCOLLECTION ====================
+      // Users can read and write their own wallets
+      match /wallets/{walletId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // ==================== TRANSACTIONS COLLECTION ====================
+    // Users can read and write transactions where userId matches
+    match /transactions/{transactionId} {
+      // Allow read if userId matches (for queries and individual reads)
+      allow read: if isAuthenticated() && 
+        resource != null && resource.data.userId == request.auth.uid;
+      
+      // Allow create if userId in request matches authenticated user
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Allow update/delete if existing document's userId matches
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+    }
+    
+    // ==================== CATEGORIES COLLECTION ====================
+    // All authenticated users can read categories
+    // Users can create/update/delete their own categories (if userId field exists)
+    // Or if no userId field, allow all authenticated users to write (for global categories)
+    match /categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+        (!request.resource.data.keys().hasAny(['userId']) || 
+         request.resource.data.userId == request.auth.uid);
+      allow update, delete: if isAuthenticated() && 
+        (!resource.data.keys().hasAny(['userId']) || 
+         resource.data.userId == request.auth.uid);
+    }
+    
+    // ==================== BUDGETS COLLECTION ====================
+    // Users can read and write budgets where userId matches
+    match /budgets/{budgetId} {
+      // Allow read if userId matches (for queries and individual reads)
+      allow read: if isAuthenticated() && 
+        resource != null && resource.data.userId == request.auth.uid;
+      
+      // Allow create if userId in request matches authenticated user
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Allow update/delete if existing document's userId matches
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+    }
+    
+    // ==================== SAVINGS_GOALS COLLECTION ====================
+    // Users can read and write savings goals where userId matches
+    match /savings_goals/{goalId} {
+      // Allow read if userId matches (for queries and individual reads)
+      allow read: if isAuthenticated() && 
+        resource != null && resource.data.userId == request.auth.uid;
+      
+      // Allow create if userId in request matches authenticated user
+      allow create: if isAuthenticated() && 
+        request.resource.data.userId == request.auth.uid;
+      
+      // Allow update/delete if existing document's userId matches
+      allow update, delete: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+      
+      // ==================== CONTRIBUTIONS SUBCOLLECTION ====================
+      // Users can read and write contributions for their own goals
+      match /contributions/{contributionId} {
+        allow read, write: if isAuthenticated() && 
+          get(/databases/$(database)/documents/savings_goals/$(goalId)).data.userId == request.auth.uid;
+      }
+    }
+  }
+}
+

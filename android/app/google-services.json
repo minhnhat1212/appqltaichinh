@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "381886891340",
+    "project_id": "appqltaichinh",
+    "storage_bucket": "appqltaichinh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:381886891340:android:b847f352d9927c0b2efbe9",
+        "android_client_info": {
+          "package_name": "com.example.appqltaichinh"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1myCQlrVazNC3wrXl1UXpSnkCwbGlrUM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

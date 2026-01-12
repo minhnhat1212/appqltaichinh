@@ -149,10 +149,16 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
               showTitles: true,
               interval: interval, // Sử dụng interval động
               getTitlesWidget: (value, meta) {
-                if (value.toInt() >= widget.timeSeriesData.length) {
+                final index = value.toInt();
+                // Check thủ công: Chỉ hiện nhãn nếu index chia hết cho interval
+                if (index % interval.toInt() != 0) {
                   return const SizedBox();
                 }
-                final date = widget.timeSeriesData[value.toInt()].date;
+
+                if (index >= widget.timeSeriesData.length) {
+                  return const SizedBox();
+                }
+                final date = widget.timeSeriesData[index].date;
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
@@ -234,10 +240,16 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
               showTitles: true,
               interval: interval, // Sử dụng interval động
               getTitlesWidget: (value, meta) {
-                if (value.toInt() >= widget.timeSeriesData.length) {
+                final index = value.toInt();
+                // Check thủ công tương tự BarChart
+                if (index % interval.toInt() != 0) {
                   return const SizedBox();
                 }
-                final date = widget.timeSeriesData[value.toInt()].date;
+
+                if (index >= widget.timeSeriesData.length) {
+                  return const SizedBox();
+                }
+                final date = widget.timeSeriesData[index].date;
                 return Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(

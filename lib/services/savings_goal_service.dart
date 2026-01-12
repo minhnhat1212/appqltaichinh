@@ -93,20 +93,33 @@ class SavingsGoalService {
   // ==================== Contribution Operations ====================
 
   /// Thêm contribution (góp tiền) vào mục tiêu
-  /// Tự động cập nhật currentAmount của goal
+  /// - [userId]: ID của người dùng (để phân quyền và trừ tiền ví)
+  /// - [walletId]: ID của ví nguồn tiền (để trừ tiền)
+  /// - [goalId]: ID của mục tiêu
+  /// - [amount]: Số tiền góp
+  /// - [note]: Ghi chú (tùy chọn)
+  ///
+  /// Hàm này thực hiện 3 việc trong 1 batch (atomic):
+  /// 1. Tạo record contribution
+  /// 2. Cập nhật số tiền đã góp (currentAmount) của goal
+  /// 3. Trừ tiền trong ví nguồn
   Future<void> addContribution({
+    required String userId,
+    required String walletId,
     required String goalId,
     required double amount,
     String? note,
   }) async {
     final goal = await getGoal(goalId);
     if (goal == null) {
-      throw Exception('Goal not found');
+      throw Exception('Mục tiêu không tồn tại');
     }
 
-    final batch = _firestore.batch();
+    final batch = _firestore
+        .batch(); // Sử dụng batch để đảm bảo tính toàn vẹn dữ liệu
 
     // 1. Thêm contribution record
+    // Cần thêm userId để đảm bảo security rules (chỉ owner mới được đọc/ghi)
     final contributionRef = _firestore
         .collection('savings_goals')
         .doc(goalId)
@@ -114,6 +127,8 @@ class SavingsGoalService {
         .doc(); // Auto generate ID
 
     batch.set(contributionRef, {
+      'userId': userId, // Quan trọng: Thêm userId để fix lỗi permission
+      'walletId': walletId, // Lưu lại ví đã dùng để góp
       'amount': amount,
       'note': note,
       'createdAt': Timestamp.fromDate(DateTime.now()),
@@ -126,6 +141,17 @@ class SavingsGoalService {
       'currentAmount': newCurrentAmount,
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     });
+
+    // 3. Trừ tiền từ ví nguồn
+    // Truy cập vào subcollection 'wallets' của user
+    final walletRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('wallets')
+        .doc(walletId);
+
+    // Sử dụng FieldValue.increment(-amount) để trừ tiền atomic
+    batch.update(walletRef, {'balance': FieldValue.increment(-amount)});
 
     await batch.commit(); // Commit tất cả thay đổi cùng lúc
   }

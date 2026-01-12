@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../models/savings_goal_model.dart';
+import '../models/wallet_model.dart'; // Import WalletModel
 import '../services/savings_goal_service.dart';
+import '../services/wallet_service.dart'; // Import WalletService
 import '../theme.dart';
 import '../widgets/gradient_button.dart';
 import 'add_edit_savings_goal_screen.dart';
@@ -21,6 +23,8 @@ class SavingsGoalDetailScreen extends StatefulWidget {
 
 class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen> {
   final SavingsGoalService _goalService = SavingsGoalService();
+  final WalletService _walletService =
+      WalletService(); // Service lấy danh sách ví
   final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
 
   // Hiển thị dialog nhập số tiền góp thêm
@@ -28,108 +32,196 @@ class _SavingsGoalDetailScreenState extends State<SavingsGoalDetailScreen> {
     final amountController = TextEditingController();
     final noteController = TextEditingController();
 
+    // Biến lưu trữ ví được chọn đóng góp
+    String? selectedWalletId;
+
+    // Sử dụng StatefulBuilder để update state trong Dialog
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.cardBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.add_circle, color: AppColors.success),
-              const SizedBox(width: 12),
-              Text('Góp tiền', style: AppTextStyles.h3),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: AppTextStyles.bodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Số tiền (₫)',
-                  hintText: '0',
-                  prefixIcon: const Icon(Icons.attach_money),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+        return StatefulBuilder(
+          // StatefulBuilder giúp rebuild dialog khi chọn ví
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: AppColors.cardBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.add_circle, color: AppColors.success),
+                  const SizedBox(width: 12),
+                  Text('Góp tiền', style: AppTextStyles.h3),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // === CHỌN VÍ (Mới thêm) ===
+                    // StreamBuilder để lấy danh sách ví real-time
+                    StreamBuilder<List<WalletModel>>(
+                      stream: _walletService.getWallets(widget.goal.userId),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        final wallets = snapshot.data!;
+                        // Nếu chưa chọn ví nào và có ví, chọn ví đầu tiên mặc định
+                        if (selectedWalletId == null && wallets.isNotEmpty) {
+                          // Dùng microtask để tránh lỗi setState trong khi build
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            setStateDialog(() {
+                              selectedWalletId = wallets.first.id;
+                            });
+                          });
+                        }
+
+                        return DropdownButtonFormField<String>(
+                          value: selectedWalletId,
+                          decoration: InputDecoration(
+                            labelText: 'Trừ tiền từ ví',
+                            prefixIcon: const Icon(
+                              Icons.account_balance_wallet,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          items: wallets.map((wallet) {
+                            return DropdownMenuItem(
+                              value: wallet.id,
+                              child: Text(
+                                '${wallet.name} (${currencyFormat.format(wallet.balance)})',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              // Cập nhật state dialog
+                              selectedWalletId = value;
+                            });
+                          },
+                        );
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      style: AppTextStyles.bodyMedium,
+                      decoration: InputDecoration(
+                        labelText: 'Số tiền (₫)',
+                        hintText: '0',
+                        prefixIcon: const Icon(Icons.attach_money),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: noteController,
+                      style: AppTextStyles.bodyMedium,
+                      decoration: InputDecoration(
+                        labelText: 'Ghi chú (không bắt buộc)',
+                        hintText: 'Nguồn tiền...',
+                        prefixIcon: const Icon(Icons.note),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Validate chọn ví
+                    if (selectedWalletId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng tạo ví tiền trước khi góp!'),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final amountText = amountController.text.trim();
+                    if (amountText.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng nhập số tiền')),
+                      );
+                      return;
+                    }
+
+                    final amount = double.tryParse(amountText);
+                    if (amount == null || amount <= 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Số tiền không hợp lệ')),
+                      );
+                      return;
+                    }
+
+                    try {
+                      // Gọi hàm thêm contribution với đầy đủ tham số
+                      await _goalService.addContribution(
+                        userId: widget
+                            .goal
+                            .userId, // Truyền userId để fix permission
+                        walletId:
+                            selectedWalletId!, // Truyền walletId để trừ tiền
+                        goalId: widget.goal.id,
+                        amount: amount,
+                        note: noteController.text.trim().isEmpty
+                            ? null
+                            : noteController.text.trim(),
+                      );
+
+                      if (mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Góp tiền thành công! Đã trừ tiền từ ví.',
+                            ),
+                            backgroundColor: AppColors.success,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        // Navigator.pop(context); // Không đóng dialog để user sửa
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Lỗi: ${e.toString()}')),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
+                  child: const Text('Xác nhận'),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: noteController,
-                style: AppTextStyles.bodyMedium,
-                decoration: InputDecoration(
-                  labelText: 'Ghi chú (không bắt buộc)',
-                  hintText: 'Nguồn tiền...',
-                  prefixIcon: const Icon(Icons.note),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final amountText = amountController.text.trim();
-                if (amountText.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Vui lòng nhập số tiền')),
-                  );
-                  return;
-                }
-
-                final amount = double.tryParse(amountText);
-                if (amount == null || amount <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Số tiền không hợp lệ')),
-                  );
-                  return;
-                }
-
-                try {
-                  await _goalService.addContribution(
-                    goalId: widget.goal.id,
-                    amount: amount,
-                    note: noteController.text.trim().isEmpty
-                        ? null
-                        : noteController.text.trim(),
-                  );
-
-                  if (mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Góp tiền thành công!')),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Lỗi: ${e.toString()}')),
-                    );
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Xác nhận'),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );

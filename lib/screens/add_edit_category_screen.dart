@@ -160,6 +160,60 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
     }
   }
 
+  /// Xác nhận xóa danh mục
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Xác nhận xóa'),
+          content: Text(
+            'Bạn có chắc muốn xóa danh mục "${widget.category!.name}"?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Xóa',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      // Đóng màn hình trước (Optimistic UI)
+      if (mounted) Navigator.pop(context);
+
+      try {
+        await _transactionService.deleteCategory(widget.category!.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đã xóa danh mục thành công'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi khi xóa danh mục: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   /// Phương thức build để tạo giao diện
   @override
   Widget build(BuildContext context) {
@@ -188,14 +242,29 @@ class _AddEditCategoryScreenState extends State<AddEditCategoryScreen> {
                       ),
                       const SizedBox(width: 8), // Khoảng cách giữa icon và text
                       // Tiêu đề màn hình, thay đổi theo chế độ
-                      Text(
-                        _isEditMode ? 'Chỉnh sửa danh mục' : 'Tạo danh mục mới',
-                        style: const TextStyle(
-                          fontSize: 24, // Kích thước chữ lớn
-                          fontWeight: FontWeight.bold, // Chữ đậm
-                          color: Colors.white, // Màu trắng
+                      Expanded(
+                        child: Text(
+                          _isEditMode
+                              ? 'Chỉnh sửa danh mục'
+                              : 'Tạo danh mục mới',
+                          style: const TextStyle(
+                            fontSize: 24, // Kích thước chữ lớn
+                            fontWeight: FontWeight.bold, // Chữ đậm
+                            color: Colors.white, // Màu trắng
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      // Nút xóa (chỉ hiện khi đang sửa)
+                      if (_isEditMode)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.white,
+                          ),
+                          onPressed: _confirmDelete,
+                          tooltip: 'Xóa danh mục',
+                        ),
                     ],
                   ),
                 ),

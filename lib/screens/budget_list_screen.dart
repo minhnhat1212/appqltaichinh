@@ -160,8 +160,8 @@ class _BudgetListScreenState extends State<BudgetListScreen>
                 await Future.delayed(const Duration(milliseconds: 500));
               },
               child: ListView.builder(
-                // top padding để list không bị dính sát AppBar
-                padding: const EdgeInsets.only(top: 16, bottom: 100),
+                // top padding để list không bị dính sát AppBar (160 để tránh bị che bởi header)
+                padding: const EdgeInsets.only(top: 160, bottom: 100),
                 itemCount: budgets.length,
                 itemBuilder: (context, index) {
                   final budget = budgets[index];
@@ -233,7 +233,7 @@ class _BudgetListScreenState extends State<BudgetListScreen>
   /// Shimmer loading giả (các khối xám)
   Widget _buildShimmerLoading() {
     return ListView.builder(
-      padding: const EdgeInsets.only(top: 16, bottom: 100),
+      padding: const EdgeInsets.only(top: 160, bottom: 100),
       itemCount: 5,
       itemBuilder: (context, index) {
         return Container(

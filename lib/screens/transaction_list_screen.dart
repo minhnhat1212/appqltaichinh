@@ -74,19 +74,7 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
 
           final transactions = snapshot.data!;
 
-          // Gom nhóm giao dịch theo Ngày (Date Grouping)
-          // Map<String, List<TransactionModel>>: Key là chuỗi ngày hiển thị, Value là list transaction
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          final groupedTransactions = <String, List<TransactionModel>>{};
-
-          for (var transaction in transactions) {
-            final dateKey = _formatDateKey(transaction.date, today);
-            if (!groupedTransactions.containsKey(dateKey)) {
-              groupedTransactions[dateKey] = [];
-            }
-            groupedTransactions[dateKey]!.add(transaction);
-          }
+          final groupedTransactions = _groupTransactionsByDate(transactions);
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -169,6 +157,26 @@ class _TransactionListScreenState extends State<TransactionListScreen> {
         },
       ),
     );
+  }
+
+  // Helper method để gom nhóm giao dịch
+  Map<String, List<TransactionModel>> _groupTransactionsByDate(
+    List<TransactionModel> transactions,
+  ) {
+    // Gom nhóm giao dịch theo Ngày (Date Grouping)
+    // Map<String, List<TransactionModel>>: Key là chuỗi ngày hiển thị, Value là list transaction
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final groupedTransactions = <String, List<TransactionModel>>{};
+
+    for (var transaction in transactions) {
+      final dateKey = _formatDateKey(transaction.date, today);
+      if (!groupedTransactions.containsKey(dateKey)) {
+        groupedTransactions[dateKey] = [];
+      }
+      groupedTransactions[dateKey]!.add(transaction);
+    }
+    return groupedTransactions;
   }
 
   // Helper format ngày để hiển thị header: "Hôm nay", "Hôm qua", hoặc "dd/MM/yyyy"

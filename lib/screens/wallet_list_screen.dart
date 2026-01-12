@@ -106,8 +106,23 @@ class _WalletListScreenState extends State<WalletListScreen> {
                         padding: const EdgeInsets.all(AppTheme.spacing),
                         itemCount: wallets.length,
                         itemBuilder: (context, index) {
-                          // Build từng item card ví
-                          return _buildWalletCard(wallets[index]);
+                          // Build từng item card ví với hiệu ứng staggered
+                          return TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            // Delay trễ dần theo index: index * 100ms
+                            duration: Duration(
+                              milliseconds: 400 + (index * 100),
+                            ),
+                            curve: Curves.easeOutQuad,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                // Trượt từ dưới lên 50px
+                                offset: Offset(0, 50 * (1 - value)),
+                                child: Opacity(opacity: value, child: child),
+                              );
+                            },
+                            child: _buildWalletCard(wallets[index]),
+                          );
                         },
                       );
                     },

@@ -20,7 +20,8 @@ class IncomeExpenseChart extends StatefulWidget {
 }
 
 class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
-  bool _isBarChart = true; // Loại biểu đồ: true = cột (bar chart), false = đường (line chart)
+  bool _isBarChart =
+      true; // Loại biểu đồ: true = cột (bar chart), false = đường (line chart)
 
   @override
   void initState() {
@@ -30,7 +31,8 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.timeSeriesData.isEmpty) { // Kiểm tra nếu không có dữ liệu
+    if (widget.timeSeriesData.isEmpty) {
+      // Kiểm tra nếu không có dữ liệu
       return _buildEmptyState(); // Hiển thị trạng thái rỗng
     }
 
@@ -86,7 +88,8 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
   /// Xây dựng nút chuyển đổi loại biểu đồ
   /// isBar: true cho biểu đồ cột, false cho biểu đồ đường
   Widget _buildChartTypeButton(IconData icon, bool isBar) {
-    final isSelected = _isBarChart == isBar; // Kiểm tra nút có đang được chọn không
+    final isSelected =
+        _isBarChart == isBar; // Kiểm tra nút có đang được chọn không
 
     return GestureDetector(
       onTap: () {
@@ -111,7 +114,15 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
 
   /// Xây dựng biểu đồ cột (Bar Chart) hiển thị thu nhập và chi tiêu
   Widget _buildBarChart() {
-    final maxY = _getMaxValue() * 1.2; // Tăng 20% để có khoảng trống phía trên (cho đẹp hơn)
+    final maxY =
+        _getMaxValue() *
+        1.2; // Tăng 20% để có khoảng trống phía trên (cho đẹp hơn)
+
+    // OPTIMIZED: Tính interval động để tránh chồng lấn nhãn ngày
+    // Chia cho 6 để hiển thị tối đa khoảng 6-7 nhãn trên trục ngang
+    double interval = widget.timeSeriesData.length > 7
+        ? (widget.timeSeriesData.length / 6).ceilToDouble()
+        : 1.0;
 
     return BarChart(
       BarChartData(
@@ -136,6 +147,7 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
+              interval: interval, // Sử dụng interval động
               getTitlesWidget: (value, meta) {
                 if (value.toInt() >= widget.timeSeriesData.length) {
                   return const SizedBox();
@@ -188,6 +200,11 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
   Widget _buildLineChart() {
     final maxY = _getMaxValue() * 1.2; // Tăng 20% để có khoảng trống phía trên
 
+    // OPTIMIZED: Tính interval động tương tự BarChart
+    double interval = widget.timeSeriesData.length > 7
+        ? (widget.timeSeriesData.length / 6).ceilToDouble()
+        : 1.0;
+
     return LineChart(
       LineChartData(
         maxY: maxY,
@@ -215,7 +232,7 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              interval: 1,
+              interval: interval, // Sử dụng interval động
               getTitlesWidget: (value, meta) {
                 if (value.toInt() >= widget.timeSeriesData.length) {
                   return const SizedBox();
@@ -306,16 +323,22 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
         spots: widget.timeSeriesData
             .asMap()
             .entries
-            .map((e) => FlSpot(e.key.toDouble(), e.value.income)) // Tạo điểm với X = index, Y = thu nhập
+            .map(
+              (e) => FlSpot(e.key.toDouble(), e.value.income),
+            ) // Tạo điểm với X = index, Y = thu nhập
             .toList(), // Chuyển thành danh sách các điểm
         isCurved: true, // Đường cong (mượt) thay vì đường thẳng
         color: Colors.green[400], // Màu xanh lá
         barWidth: 3, // Độ dày đường 3px
         isStrokeCapRound: true, // Đầu đường bo tròn
-        dotData: const FlDotData(show: true), // Hiển thị chấm tròn tại mỗi điểm dữ liệu
+        dotData: const FlDotData(
+          show: true,
+        ), // Hiển thị chấm tròn tại mỗi điểm dữ liệu
         belowBarData: BarAreaData(
           show: true, // Hiển thị vùng tô màu phía dưới đường
-          color: Colors.green.withOpacity(0.1), // Màu xanh nhạt (độ trong suốt 10%)
+          color: Colors.green.withOpacity(
+            0.1,
+          ), // Màu xanh nhạt (độ trong suốt 10%)
         ),
       ),
       // Đường chi tiêu (màu đỏ)
@@ -323,7 +346,9 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
         spots: widget.timeSeriesData
             .asMap()
             .entries
-            .map((e) => FlSpot(e.key.toDouble(), e.value.expense)) // Tạo điểm với X = index, Y = chi tiêu
+            .map(
+              (e) => FlSpot(e.key.toDouble(), e.value.expense),
+            ) // Tạo điểm với X = index, Y = chi tiêu
             .toList(),
         isCurved: true, // Đường cong
         color: Colors.red[400], // Màu đỏ
@@ -343,7 +368,10 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildLegendItem('Thu nhập', Colors.green[400]!), // Màu xanh cho thu nhập
+        _buildLegendItem(
+          'Thu nhập',
+          Colors.green[400]!,
+        ), // Màu xanh cho thu nhập
         const SizedBox(width: 24),
         _buildLegendItem('Chi tiêu', Colors.red[400]!), // Màu đỏ cho chi tiêu
       ],
@@ -376,8 +404,10 @@ class _IncomeExpenseChartState extends State<IncomeExpenseChart> {
   double _getMaxValue() {
     double max = 0;
     for (var data in widget.timeSeriesData) {
-      if (data.income > max) max = data.income; // Cập nhật max nếu thu nhập lớn hơn
-      if (data.expense > max) max = data.expense; // Cập nhật max nếu chi tiêu lớn hơn
+      if (data.income > max)
+        max = data.income; // Cập nhật max nếu thu nhập lớn hơn
+      if (data.expense > max)
+        max = data.expense; // Cập nhật max nếu chi tiêu lớn hơn
     }
     // Trả về ít nhất 100 để tránh lỗi khi khoảng cách bằng 0
     return max > 0 ? max : 100;

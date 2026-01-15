@@ -386,7 +386,7 @@ class _AddEditBudgetScreenState extends State<AddEditBudgetScreen> {
                 padding: const EdgeInsets.all(16), // Padding bên trong
                 decoration: BoxDecoration(
                   // Màu nền xanh nhạt
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12), // Bo góc
                 ),
                 child: Row(
